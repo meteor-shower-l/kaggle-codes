@@ -1,54 +1,51 @@
-import pandas
+# 去除Ticket、Cabin数据
+# 对Name抽取头衔，并做向量化
+# Sex、Embarked做向量化
+
+import pandas as pd
 import csv
+
+
 # 读取dataframe
 def read_csv(file_dir):
     data = []
-    with open(file_dir,'r',encoding='utf-8') as file:
+    with open(file_dir, "r", encoding="utf-8") as file:
         csv_reader = csv.reader(file)
         headers = next(csv_reader)
         for row in csv_reader:
             data.append(row)
-    df = pandas.DataFrame(data, columns=headers)
+    df = pd.DataFrame(data, columns=headers)
     return df
-# 将给定dataframe中的Name独热表示
-def Name_onhot(df):
-    return pandas.get_dummies(df,columns = ['Name'],dtype=int)
-# 将给定dataframe中的Sex变为数字
-def Sex_to_num(df):
-    sex_mapping = {'male': 0, 'female': 1}
-    df['Sex'] = df['Sex'].map(sex_mapping)
-    return df
-# 将给定dataframe中缺失的年龄替代为指定值
-def insert_age(given_df,num):
-    given_df['Age'] = given_df['Age'].fillna(num)
-    return given_df
-# 将给定dataframe中的ticket独热表示
-def ticket_onehot(df):
-    return pandas.get_dummies(df,columns = ['Ticket'],dtype=int)
-# 将给定dataframe中的Cabin列填入Unknown后独热表示
-def Cabin_onhot(df):
-    for data in df['Cabin']:
-        if data =='':
-            data = 'Unknown'
-    return pandas.get_dummies(df,columns = ['Cabin'],dtype=int)
-# 将给定dataframe中的Embarked独热表示
-def Embarked_onehot(df):
-    return pandas.get_dummies(df,columns = ['Embarked'],dtype=int)
 
-df1 = read_csv('F:\\code_files\\python\\kaggle\\gs-Titanic\\data\\train.csv')
-df2 = read_csv('F:\\code_files\\python\\kaggle\\gs-Titanic\\data\\test.csv')
-df = pandas.concat([df1,df2],ignore_index=True)
 
-df = Name_onhot(df)
-df = Sex_to_num(df)
-df['Age'] = pandas.to_numeric(df['Age'], errors='coerce')
-df = insert_age(df,int(df.Age.mean()))
-df = ticket_onehot(df)
-df = Cabin_onhot(df)
-df = Embarked_onehot(df)
-print(df)
-split_index = 891
-df_processed1 = (df[0:split_index]).iloc[:,1:]
-df_processed2 = (df[split_index:]).iloc[:,1:]
-df_processed1.to_csv('F:\\code_files\\python\\kaggle\\gs-Titanic\\data\\train_processed.csv')
-df_processed2.to_csv('F:\\code_files\\python\\kaggle\\gs-Titanic\\data\\test_processed.csv')
+# 读取数据
+df1 = read_csv("F:\\code_files\\python\\kaggle\\gs-Titanic\\data\\train.csv")
+df2 = read_csv("F:\\code_files\\python\\kaggle\\gs-Titanic\\data\\test.csv")
+df = pd.concat([df1, df2], ignore_index=True)
+
+# 删除Cabin列和Ticket列
+df.drop(["PassengerId", "Ticket", "Cabin"], axis=1, inplace=True)
+
+# 从姓名列中提取头衔,并直接代替姓名列
+df["Name"] = df["Name"].str.extract(r" ([A-Za-z]+)\.", expand=False)
+df["Name"] = df["Name"].str.strip()
+df.rename(columns={"Name": "Title"}, inplace=True)
+
+# 将空的年龄列替换为总数据（训练+测试）的年龄平均值
+df["Age"] = pd.to_numeric(df["Age"], errors="coerce")
+ave_age = round(df["Age"].mean(), 1)
+df["Age"] = df["Age"].fillna(ave_age)
+
+# 对头衔，性别，登船地点进行独热表示
+df = pd.get_dummies(df, columns=["Title", "Sex", "Embarked"], dtype=int)
+
+df_processed1 = df.iloc[:891]
+df_processed2 = df.iloc[891:]
+df_processed1.to_csv(
+    "F:\\code_files\\python\\kaggle\\gs-Titanic\\data\\train_processed.csv",
+    index=False,
+)
+df_processed2.to_csv(
+    "F:\\code_files\\python\\kaggle\\gs-Titanic\\data\\test_processed.csv",
+    index=False,
+)
