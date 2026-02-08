@@ -40,12 +40,8 @@ def k_cross(
     for fold, (train_index, test_index) in enumerate(kf.split(X)):
         # 划分数据并定义DataLoader
         train_dataset = TensorDataset(X[train_index], Y[train_index])
-        test_dataset = TensorDataset(X[test_index], Y[test_index])
         train_dataloader = DataLoader(
-            train_dataset, shuffle=True, batch_size=32, drop_last=False
-        )
-        test_dataloader = DataLoader(
-            test_dataset, shuffle=False, batch_size=32, drop_last=False
+            train_dataset, shuffle=True, batch_size=64, drop_last=True
         )
         # 每折都需要初始化模型
         net.apply(initialization)
@@ -57,31 +53,31 @@ def k_cross(
         )
         # 训练epoch_num轮
         for i in range(epoch_num):
-            train_times = 0
-            total_test_loss = 0
-            total_samples = 0
             print(f"在{device}上开始第{i}轮训练与测试")
             net.train()
+            total_loss = 0
+            total_times = 0
             for batch_X, batch_Y in train_dataloader:
                 batch_Y_hat = net(batch_X)
                 loss = loss_function(batch_Y_hat, batch_Y)
+                total_loss += loss.item()
+                total_times += 1
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
-                train_times += 1
-                writer.add_scalar(
-                    f"train_loss,k-flod:{fold}", loss.item(), train_times
-                )
-            # 在完成一轮训练后，在测试集上进行测试，并写入在测试集上的平均误差
+            writer.add_scalar(
+                f"train_loss,k-flod:{fold}", total_loss / total_times, i + 1
+            )
+            # 在完成一轮训练后，在测试集上进行测试，并写入在测试集的正确率
             net.eval()
             with torch.no_grad():
-                for batch_X, batch_Y in test_dataloader:
-                    batch_Y_hat = net(batch_X)
-                    loss = loss_function(batch_Y_hat, batch_Y)
-                    total_test_loss += loss.item() * len(batch_Y)
-                    total_samples += len(batch_Y)
-            writer.add_scalar(
-                f"test_loss,k_flod{fold}", total_test_loss / total_samples, i
-            )
+                predict = net(X[test_index])
+                loss = loss_function(predict, Y[test_index])
+                _, predicted = torch.max(predict.data, 1)
+                total = Y[test_index].size(0)
+                correct = (predicted == Y[test_index]).sum().item()
+                accuracy = 100.0 * correct / total
+
+            writer.add_scalar(f"accuracy,k_flod{fold}", accuracy, i + 1)
         if device != "cpu":
             torch.cuda.empty_cache()
