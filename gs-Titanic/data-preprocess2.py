@@ -38,7 +38,9 @@ df["Age"] = pd.to_numeric(df["Age"], errors="coerce")
 ave_age = round(df["Age"].mean(), 1)
 df["Age"] = df["Age"].fillna(ave_age)
 # 增加家庭成员数列
-df["Family_member_num"] = df["SibSp"] + df["Parch"]
+df["Family_member_num"] = pd.to_numeric(
+    df["SibSp"], errors="coerce"
+) + pd.to_numeric(df["Parch"], errors="coerce")
 # 以3,18,60为分界线，对年龄进行划分
 bins = [0, 3, 18, 60, 120]
 labels = ["baby", "kid", "adult", "elder"]
