@@ -6,7 +6,7 @@
 # 数据使用train_processed_2.csv
 # 数据中20%用于训练线性模型，80%用于Stacking法训练基学习器
 
-# 效果似乎不佳，可以考虑采用正常的k折交叉验证并更改基学习器架构以确保好而不同
+# 效果得到一定提升(0.78468)，可以考虑采用正常的k折交叉验证并更改基学习器架构以确保好而不同
 import pandas as pd
 import torch
 from torch import nn
