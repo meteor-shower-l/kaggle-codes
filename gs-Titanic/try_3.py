@@ -64,19 +64,20 @@ init_X, init_Y = read_csv(init_data_dir)
 init_X = init_X.to(device)
 init_Y = init_Y.to(device)
 init_dataset = TensorDataset(init_X, init_Y)
+"""
 # 将初始数据分割为训练集与测试集
+# 在最终预测时，不再需要测试集
 total_size = len(init_dataset)
 train_size = int(0.8 * total_size)
 test_size = total_size - train_size
 train_dataset, test_dataset = random_split(
     init_dataset, [train_size, test_size]
 )
+"""
 # 将训练集分割为基学习器集与元学习器集
-base_size = int(0.8 * len(train_dataset))
-meta_size = len(train_dataset) - base_size
-base_dataset, meta_dataset = random_split(
-    train_dataset, [base_size, meta_size]
-)
+base_size = int(0.8 * len(init_dataset))
+meta_size = len(init_dataset) - base_size
+base_dataset, meta_dataset = random_split(init_dataset, [base_size, meta_size])
 # 使用随机采样法得到5个基训练集
 base_indices = list(range(len(base_dataset)))
 bagging_subsets = []
@@ -203,12 +204,13 @@ for epoch in range(meta_epoch):
         loss.backward()
         meta_optimizer.step()
     print(f"第{epoch}轮训练完成,loss:{total_loss/total_times}")
-    meta_net.eval()
-    test_prediction = meta_net_predict(
-        base_net_list, meta_net, test_dataset[:][0]
-    )
-    test_accuracy = (test_prediction == test_dataset[:][1]).float().mean()
-    print(f"第{epoch}轮训练后，在测试集上的正确率为{test_accuracy}")
-    writer.add_scalar(
-        "accuracy_on_testdata_during_train", test_accuracy, epoch
-    )
+# 产生最终预测结果并保存
+final_result = meta_net_predict(base_net_list, meta_net, predict_X)
+final_result_cpu = final_result.cpu().numpy()
+results_df = pd.DataFrame(
+    {
+        "PassengerId": range(892, 892 + len(final_result)),
+        "Survived": final_result_cpu,
+    }
+)
+results_df.to_csv("submission_3.csv", index=False)
