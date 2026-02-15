@@ -23,13 +23,20 @@ def read_csv_predict(file_dir):
 class LVQ_DIY:
     # 构造函数
     def __init__(
-        self, f_distance_dim, f_num_class, f_num_prototypes, f_epoch, f_lr
+        self,
+        f_distance_dim,
+        f_num_class,
+        f_num_prototypes,
+        f_epoch,
+        f_lr,
+        f_decay_rate,
     ):
         self.distance_dim = f_distance_dim
         self.num_class = f_num_class
         self.num_prototypes = f_num_prototypes
         self.epoch = f_epoch
         self.lr = f_lr
+        self.decay_rate = f_decay_rate
 
     # 训练函数
     def fit(self, X, Y):
@@ -58,6 +65,8 @@ class LVQ_DIY:
         # 结合确定的距离最近的class与prototype,对更新向量进行累加，得到最终的更新向量array(num_class,num_prototypes,n_features)
         # 每轮循环中将self.prototypes+=(得到的更新向量array)
         for train_times in range(self.epoch):
+            # 令学习率随着轮数的增加而减少(指数级)
+            current_lr = self.lr * np.power(self.decay_rate, train_times)
             # 将X与self.prototypes进行拓展以计算距离
             temp_X = X[
                 :, np.newaxis, np.newaxis, :
@@ -92,7 +101,7 @@ class LVQ_DIY:
             per_sample_update = (
                 work_diff
                 * increase_decrease_coefficient[:, np.newaxis]
-                * self.lr
+                * current_lr
             )  # 形状为(n_sample,n_features)
             update_array = np.zeros_like(self.prototypes)
             # 将每个样本对应的改变量叠加至每个原型向量该变量
