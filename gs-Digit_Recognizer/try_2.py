@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 from sklearn.decomposition import PCA
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
 
 
 def read_csv_train(file_dir):
@@ -111,7 +112,11 @@ class LVQ_DIY:
                 per_sample_update,
             )
             self.prototypes += update_array
-            print(f"完成第{train_times+1}次训练")
+            pred = self.predict(X)
+            acc = np.mean(pred == Y)
+            print(f"""Epoch {train_times+1},
+lr: {current_lr},
+train acc: {acc*100}%""")
 
     # 预测函数
     def predict(self, X):
@@ -135,9 +140,11 @@ class LVQ_DIY:
 
 
 # 指定学习率
-lr = 1e-3
+lr = 1e-4
+# 指定学习率衰减系数
+decay_rate = 1
 # 指定训练轮数
-epoch = 500
+epoch = 100
 # 指定PCA后维数
 dim_PCA = 100
 
@@ -145,14 +152,14 @@ dim_PCA = 100
 init_features, init_lables = read_csv_train(
     "F:\\code_files\\python\\kaggle\\gs-Digit_Recognizer\\data\\train.csv"
 )
-predict_features, _ = read_csv_predict(
+predict_features = read_csv_predict(
     "F:\\code_files\\python\\kaggle\\gs-Digit_Recognizer\\data\\test.csv"
 )
 # 将数据集划分为训练集和测试集
 train_features, test_features, train_lables, test_lables = train_test_split(
     init_features, init_lables, test_size=0.2, random_state=42
 )
-# 进行PCA降维
+# 进行PCA降维以及标准化
 # 其中在训练集上获得降维参数，施加在测试集和预测集上
 pca = PCA(n_components=dim_PCA)
 # (33600,100)
@@ -160,3 +167,22 @@ train_features = pca.fit_transform(train_features)
 # (8400,100)
 test_features = pca.transform(test_features)
 predict_features = pca.transform(predict_features)
+
+# 初始化LVQ分类器
+lvq_machine = LVQ_DIY(
+    f_distance_dim=2,
+    f_num_class=10,
+    f_num_prototypes=3,
+    f_epoch=epoch,
+    f_lr=lr,
+    f_decay_rate=decay_rate,
+)
+# 训练
+lvq_machine.fit(train_features, train_lables)
+# 生成结果
+test_result = lvq_machine.predict(test_features)
+# 计算最终正确率
+total_num = len(test_lables)
+correct = np.sum((test_lables == test_result))
+accuracy = correct / total_num
+print(f"在测试集上,正确率为{accuracy*100}%")
