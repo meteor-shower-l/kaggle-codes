@@ -144,7 +144,7 @@ lr = 1e-4
 # 指定学习率衰减系数
 decay_rate = 1
 # 指定训练轮数
-epoch = 100
+epoch = 200
 # 指定PCA后维数
 dim_PCA = 100
 
@@ -172,7 +172,7 @@ predict_features = pca.transform(predict_features)
 lvq_machine = LVQ_DIY(
     f_distance_dim=2,
     f_num_class=10,
-    f_num_prototypes=3,
+    f_num_prototypes=5,
     f_epoch=epoch,
     f_lr=lr,
     f_decay_rate=decay_rate,
