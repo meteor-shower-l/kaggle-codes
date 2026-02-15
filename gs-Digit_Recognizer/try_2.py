@@ -40,6 +40,7 @@ class LVQ_DIY:
         )
         for i in range(self.num_class):
             mask = Y == i
+            # 从X中选取mask=1的序号对应的值
             X_label = X[mask]
             random_choice = np.random.choice(
                 len(X_label), size=self.num_prototypes, replace=False
@@ -105,7 +106,23 @@ class LVQ_DIY:
 
     # 预测函数
     def predict(self, X):
-        pass
+        n_sample = X.shape[0]
+        temp_X = X[:, np.newaxis, np.newaxis, :]  # 形状为(n_sample, 1, 1, 100)
+        temp_prototypes = self.prototypes[
+            np.newaxis, :, :, :
+        ]  # 形状为(1, num_class, num_prototypes, 100)
+        diff = temp_X - temp_prototypes
+        distance = np.power(
+            np.sum(np.power(np.abs(diff), self.distance_dim), axis=-1),
+            1 / self.distance_dim,
+        )  # 形状为(n_sample,num_class,num_prototypes)
+        flat_distance = distance.reshape(
+            n_sample, -1
+        )  # 压平为(n_sample,num_class*num_prototypes)
+        # 获得最小距离的编号
+        nearest_indices = np.argmin(flat_distance, axis=1)
+        nearest_class = nearest_indices // self.num_prototypes
+        return nearest_class
 
 
 # 指定学习率
