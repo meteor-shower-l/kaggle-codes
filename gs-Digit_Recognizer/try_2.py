@@ -123,14 +123,14 @@ class LVQ_DIY:
                 # 进行更新
                 self.prototypes += update_array
                 # 预测并计算正确率
-                pred = self.predict(X)
+                pred = self.predict_result(X)
                 acc = (pred == Y).float().mean()
                 print(f"""Epoch {train_times+1},
 lr: {current_lr},
 train acc: {acc*100}%""")
 
     # 预测函数
-    def predict(self, X):
+    def predict_result(self, X):
         # 不计算梯度以加快速度
         with torch.no_grad():
             n_sample = X.shape[0]
@@ -149,6 +149,21 @@ train acc: {acc*100}%""")
             nearest_indices = torch.argmin(flat_distance, dim=1)
             nearest_class = nearest_indices // self.num_prototypes
             return nearest_class
+
+    def predict_distance(self, X):
+        with torch.no_grad():
+            temp_X = X[:, None, None, :]  # 形状为(n_sample, 1, 1, 100)
+            temp_prototypes = self.prototypes[
+                None, :, :, :
+            ]  # 形状为(1, num_class, num_prototypes, 100)
+            diff = temp_X - temp_prototypes
+            distance = torch.norm(
+                diff, p=self.distance_dim, dim=-1
+            )  # 形状为(n_sample,num_class,num_prototypes)
+            min_distance = -torch.min(distance, dim=-1)[
+                0
+            ]  # 形状为(n_sample,num_class)
+            return min_distance
 
 
 # 指定学习率
