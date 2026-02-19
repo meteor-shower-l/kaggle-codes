@@ -93,6 +93,16 @@ if __name__ == "__main__":
     loss_function = loss_function.to(device)
     # 定义优化器
     optimizer = torch.optim.Adam(params=net.parameters(), lr=lr)
+    # 定义学习率调度器
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer=optimizer,
+        mode="max",  # 特征越大越好
+        factor=0.8,  # 每次衰减的系数
+        patience=10,  # 若10轮内，参数没有突破原有最大/最小值，学习率就会衰减
+        cooldown=5,  # 衰减后5轮内不会再次检测
+        threshold=0.0001,  # 只有超过0.0001的变化才会被视为改善
+        min_lr=1e-5,  # 学习率不小于1e-5
+    )
     for i in range(epoch):
         net.train()
         total_loss = 0
@@ -119,8 +129,11 @@ if __name__ == "__main__":
             total += lables.size(0)
             correct += (predicted == lables).sum().item()
         accuracy = correct / total
-        print(
-            f"第{i+1}轮训练后，平均损失为{average_loss},在测试集上的正确率为{accuracy*100}%"
-        )
+        scheduler.step(accuracy)
+        current_lr = scheduler.get_last_lr()[0]
+        print(f"""第{i+1}轮训练后
+平均损失为{average_loss}
+在测试集上的正确率为{accuracy*100}%
+当前学习率: {current_lr}""")
         weiter.add_scalar("平均损失", average_loss, i)
         weiter.add_scalar("平均正确率", accuracy, i)
