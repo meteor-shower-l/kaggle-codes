@@ -17,6 +17,47 @@ def read_csv(file_dir):
     return X, Y
 
 
+# 定义网络
+def mordern_cnn_net():
+    net = nn.Sequential(
+        nn.Conv2d(
+            in_channels=1,
+            out_channels=32,
+            kernel_size=3,
+            padding=1,
+            stride=1,
+        ),  # 大小不变
+        nn.BatchNorm2d(32),
+        nn.ReLU(),
+        nn.MaxPool2d(kernel_size=2, stride=2),  # 变为14*14
+        nn.Conv2d(
+            in_channels=32,
+            out_channels=64,
+            kernel_size=3,
+            padding=1,
+            stride=1,
+        ),  # 大小不变
+        nn.BatchNorm2d(64),
+        nn.ReLU(),
+        nn.MaxPool2d(kernel_size=2, stride=2),  # 大小变为7*7
+        nn.Flatten(),  # 展平为64*7*7的一维向量
+        nn.Linear(64 * 7 * 7, 512),
+        nn.BatchNorm1d(512),
+        nn.ReLU(),
+        nn.Dropout(p=0.3),
+        nn.Linear(512, 128),
+        nn.BatchNorm1d(128),
+        nn.ReLU(),
+        nn.Dropout(p=0.3),
+        nn.Linear(128, 32),
+        nn.BatchNorm1d(32),
+        nn.ReLU(),
+        nn.Linear(32, 10),
+    )
+    net = net.to(device)
+    return net
+
+
 if __name__ == "__main__":
     # 指定设备为gpu
     device = torch.device("cuda")
@@ -58,46 +99,6 @@ if __name__ == "__main__":
         pin_memory=True,
         prefetch_factor=2,
     )
-
-    # 定义网络
-    def mordern_cnn_net():
-        net = nn.Sequential(
-            nn.Conv2d(
-                in_channels=1,
-                out_channels=32,
-                kernel_size=3,
-                padding=1,
-                stride=1,
-            ),  # 大小不变
-            nn.BatchNorm2d(32),
-            nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2, stride=2),  # 变为14*14
-            nn.Conv2d(
-                in_channels=32,
-                out_channels=64,
-                kernel_size=3,
-                padding=1,
-                stride=1,
-            ),  # 大小不变
-            nn.BatchNorm2d(64),
-            nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2, stride=2),  # 大小变为7*7
-            nn.Flatten(),  # 展平为64*7*7的一维向量
-            nn.Linear(64 * 7 * 7, 512),
-            nn.BatchNorm1d(512),
-            nn.ReLU(),
-            nn.Dropout(p=0.3),
-            nn.Linear(512, 128),
-            nn.BatchNorm1d(128),
-            nn.ReLU(),
-            nn.Dropout(p=0.3),
-            nn.Linear(128, 32),
-            nn.BatchNorm1d(32),
-            nn.ReLU(),
-            nn.Linear(32, 10),
-        )
-        net = net.to(device)
-        return net
 
     net = mordern_cnn_net()
     # 定义损失函数
