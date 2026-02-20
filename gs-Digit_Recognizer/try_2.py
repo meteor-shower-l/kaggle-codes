@@ -219,7 +219,7 @@ if __name__ == "__main__":
     # 训练
     lvq_machine.fit(train_features, train_lables)
     # 生成结果
-    test_result = lvq_machine.predict(test_features)
+    test_result = lvq_machine.predict_result(test_features)
     # 计算最终正确率
     total_num = len(test_lables)
     correct = (test_lables == test_result).float().sum()

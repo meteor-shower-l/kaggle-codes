@@ -17,7 +17,7 @@ def read_csv(file_dir):
 
 
 # 定义网络
-def LeNet():
+def LeNet(f_device):
     net = nn.Sequential(
         nn.Conv2d(
             in_channels=1,
@@ -44,7 +44,7 @@ def LeNet():
         nn.Sigmoid(),
         nn.Linear(in_features=84, out_features=10),
     )
-    net = net.to(device)
+    net = net.to(f_device)
     return net
 
 

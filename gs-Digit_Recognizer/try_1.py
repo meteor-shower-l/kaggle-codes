@@ -18,7 +18,7 @@ def read_csv(file_dir):
 
 
 # 定义网络
-def mordern_cnn_net():
+def mordern_cnn_net(f_device):
     net = nn.Sequential(
         nn.Conv2d(
             in_channels=1,
@@ -54,7 +54,7 @@ def mordern_cnn_net():
         nn.ReLU(),
         nn.Linear(32, 10),
     )
-    net = net.to(device)
+    net = net.to(f_device)
     return net
 
 
