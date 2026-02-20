@@ -150,7 +150,7 @@ train acc: {acc*100}%""")
             nearest_class = nearest_indices // self.num_prototypes
             return nearest_class
 
-    def predict_distance(self, X):
+    def predict_proba(self, X):
         with torch.no_grad():
             temp_X = X[:, None, None, :]  # 形状为(n_sample, 1, 1, 100)
             temp_prototypes = self.prototypes[
@@ -163,7 +163,7 @@ train acc: {acc*100}%""")
             min_distance = -torch.min(distance, dim=-1)[
                 0
             ]  # 形状为(n_sample,num_class)
-            return min_distance
+            return torch.nn.functional.softmax(min_distance, dim=1)
 
 
 # 指定学习率
