@@ -60,26 +60,37 @@ if __name__ == "__main__":
     )
 
     # 定义网络
-    net = nn.Sequential(
-        nn.Conv2d(
-            in_channels=1, out_channels=6, kernel_size=5, padding=2, stride=1
-        ),  # (6,28,28)
-        nn.Sigmoid(),
-        nn.AvgPool2d(kernel_size=2, stride=2),  # (6,14,14)
-        nn.Conv2d(
-            in_channels=6, out_channels=16, kernel_size=5, padding=0, stride=1
-        ),  # (16,10,10)
-        nn.Sigmoid(),
-        nn.AvgPool2d(kernel_size=2, stride=2),  # (16,5,5)
-        nn.Flatten(),
-        nn.Linear(in_features=16 * 5 * 5, out_features=120),
-        nn.Sigmoid(),
-        nn.Linear(in_features=120, out_features=84),
-        nn.Sigmoid(),
-        nn.Linear(in_features=84, out_features=10),
-    )
+    def LeNet():
+        net = nn.Sequential(
+            nn.Conv2d(
+                in_channels=1,
+                out_channels=6,
+                kernel_size=5,
+                padding=2,
+                stride=1,
+            ),  # (6,28,28)
+            nn.Sigmoid(),
+            nn.AvgPool2d(kernel_size=2, stride=2),  # (6,14,14)
+            nn.Conv2d(
+                in_channels=6,
+                out_channels=16,
+                kernel_size=5,
+                padding=0,
+                stride=1,
+            ),  # (16,10,10)
+            nn.Sigmoid(),
+            nn.AvgPool2d(kernel_size=2, stride=2),  # (16,5,5)
+            nn.Flatten(),
+            nn.Linear(in_features=16 * 5 * 5, out_features=120),
+            nn.Sigmoid(),
+            nn.Linear(in_features=120, out_features=84),
+            nn.Sigmoid(),
+            nn.Linear(in_features=84, out_features=10),
+        )
+        net = net.to(device)
+        return net
 
-    net = net.to(device)
+    net = LeNet()
     # 定义损失函数
     loss_function = nn.CrossEntropyLoss()
     loss_function = loss_function.to(device)
