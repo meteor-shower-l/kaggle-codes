@@ -166,60 +166,62 @@ train acc: {acc*100}%""")
             return torch.nn.functional.softmax(min_distance, dim=1)
 
 
-# 指定学习率
-lr = 1e-4
-# 指定学习率衰减系数
-decay_rate = 1
-# 指定训练轮数
-epoch = 200
-# 指定PCA后维数
-dim_PCA = 100
-# 指定设备
-device = "cuda"
+if __name__ == "__main__":
+    # 指定学习率
+    lr = 1e-4
+    # 指定学习率衰减系数
+    decay_rate = 1
+    # 指定训练轮数
+    epoch = 200
+    # 指定PCA后维数
+    dim_PCA = 100
+    # 指定设备
+    device = "cuda"
 
-# 读取数据
-init_features, init_lables = read_csv_train(
-    "F:\\code_files\\python\\kaggle\\gs-Digit_Recognizer\\data\\train.csv"
-)
-predict_features = read_csv_predict(
-    "F:\\code_files\\python\\kaggle\\gs-Digit_Recognizer\\data\\test.csv"
-)
-# 将数据集划分为训练集和测试集
-train_features, test_features, train_lables, test_lables = train_test_split(
-    init_features, init_lables, test_size=0.2, random_state=42
-)
-# 进行PCA降维以及标准化
-# 其中在训练集上获得降维参数，施加在测试集和预测集上
-pca = PCA(n_components=dim_PCA)
-# (33600,100)
-train_features = pca.fit_transform(train_features)
-# (8400,100)
-test_features = pca.transform(test_features)
-predict_features = pca.transform(predict_features)
-# 全部转化为tensor并移动到GPU
-train_features = torch.from_numpy(train_features).float().to(device)
-train_lables = torch.from_numpy(train_lables).long().to(device)
-test_features = torch.from_numpy(test_features).float().to(device)
-test_lables = torch.from_numpy(test_lables).long().to(device)
-predict_features = torch.from_numpy(predict_features).float().to(device)
+    # 读取数据
+    init_features, init_lables = read_csv_train(
+        "F:\\code_files\\python\\kaggle\\gs-Digit_Recognizer\\data\\train.csv"
+    )
+    predict_features = read_csv_predict(
+        "F:\\code_files\\python\\kaggle\\gs-Digit_Recognizer\\data\\test.csv"
+    )
+    # 将数据集划分为训练集和测试集
+    train_features, test_features, train_lables, test_lables = (
+        train_test_split(
+            init_features, init_lables, test_size=0.2, random_state=42
+        )
+    )
+    # 进行PCA降维以及标准化
+    # 其中在训练集上获得降维参数，施加在测试集和预测集上
+    pca = PCA(n_components=dim_PCA)
+    # (33600,100)
+    train_features = pca.fit_transform(train_features)
+    # (8400,100)
+    test_features = pca.transform(test_features)
+    predict_features = pca.transform(predict_features)
+    # 全部转化为tensor并移动到GPU
+    train_features = torch.from_numpy(train_features).float().to(device)
+    train_lables = torch.from_numpy(train_lables).long().to(device)
+    test_features = torch.from_numpy(test_features).float().to(device)
+    test_lables = torch.from_numpy(test_lables).long().to(device)
+    predict_features = torch.from_numpy(predict_features).float().to(device)
 
-
-# 初始化LVQ分类器
-lvq_machine = LVQ_DIY(
-    f_distance_dim=2,
-    f_num_class=10,
-    f_num_prototypes=5,
-    f_epoch=epoch,
-    f_lr=lr,
-    f_decay_rate=decay_rate,
-    f_device=device,
-)
-# 训练
-lvq_machine.fit(train_features, train_lables)
-# 生成结果
-test_result = lvq_machine.predict(test_features)
-# 计算最终正确率
-total_num = len(test_lables)
-correct = (test_lables == test_result).float().sum()
-accuracy = correct / total_num
-print(f"在测试集上,正确率为{accuracy*100}%")
+    # 初始化LVQ分类器
+    lvq_machine = LVQ_DIY(
+        f_distance_dim=2,
+        f_num_class=10,
+        f_num_prototypes=5,
+        f_epoch=epoch,
+        f_lr=lr,
+        f_decay_rate=decay_rate,
+        f_device=device,
+    )
+    # 训练
+    lvq_machine.fit(train_features, train_lables)
+    # 生成结果
+    test_result = lvq_machine.predict(test_features)
+    # 计算最终正确率
+    total_num = len(test_lables)
+    correct = (test_lables == test_result).float().sum()
+    accuracy = correct / total_num
+    print(f"在测试集上,正确率为{accuracy*100}%")
