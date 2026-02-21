@@ -1,5 +1,8 @@
 # 使用集成学习方法，综合前3种尝试
 # 数据集划分为0.64基学习器，0.16元学习器，0.1验证集，0.1测试集
+
+# 经过实验，发现在当前参数下，以64%数据训基学习器可以在验证集上达到较好的效果
+# 但是元学习器最终在测试集上的表现不如基学习器的表现，原因未知
 import pandas as pd
 import torch
 from sklearn.decomposition import PCA
@@ -96,7 +99,7 @@ if __name__ == "__main__":
     # 指定基训练轮数
     base_epoch = 200
     # 指定元训练轮数
-    meta_epoch = 100
+    meta_epoch = 300
     # 指定PCA维度
     dim_PCA = 100
     weiter = SummaryWriter(log_dir="log")
@@ -208,6 +211,11 @@ if __name__ == "__main__":
     # 用于元训练的数据
     LVQ_meta_features = pca.transform(meta_features)
     LVQ_meta_features = torch.tensor(LVQ_meta_features, dtype=torch.float32)
+    # 验证数据
+    LVQ_verification_features = pca.transform(verification_features)
+    LVQ_verification_features = torch.tensor(
+        LVQ_verification_features, dtype=torch.float32
+    )
     # 用于测试的数据
     LVQ_test_features = pca.transform(test_features)
     LVQ_test_features = torch.tensor(LVQ_test_features, dtype=torch.float32)
@@ -245,7 +253,6 @@ if __name__ == "__main__":
     final_meta_features = torch.cat(
         [meta_features_1, meta_features_2, meta_features_3], dim=1
     )
-    print(final_meta_features.shape)
     final_meta_lables = tensor_meta_lables.cpu()
     meta_Dataset = TensorDataset(final_meta_features, final_meta_lables)
     meta_DataLoader = DataLoader(
@@ -257,16 +264,58 @@ if __name__ == "__main__":
         pin_memory=True,
         prefetch_factor=2,
     )
+    # 准备验证数据
+    processed_verification_features_1 = (
+        torch.nn.functional.softmax(
+            base_net_list[0](square_tensor_verification_features.to(device)),
+            dim=1,
+        )
+        .detach()
+        .cpu()
+    )
+    processed_verification_features_2 = (
+        torch.nn.functional.softmax(
+            base_net_list[1](square_tensor_verification_features.to(device)),
+            dim=1,
+        )
+        .detach()
+        .cpu()
+    )
+    processed_verification_features_3 = (
+        base_net_list[2]
+        .predict_proba(LVQ_verification_features.to(device))
+        .detach()
+        .cpu()
+    )
+    final_verification_features = torch.cat(
+        [
+            processed_verification_features_1,
+            processed_verification_features_2,
+            processed_verification_features_3,
+        ],
+        dim=1,
+    )
+    final_verification_lables = tensor_verification_lables
     # 定义损失函数
     loss_function = nn.CrossEntropyLoss().to(device)
     # 定义优化器
     optimizer = torch.optim.Adam(meta_net.parameters(), lr=meta_lr)
+    # 定义学习器调度器
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer=optimizer,
+        mode="max",
+        patience=10,
+        threshold=0.0001,
+        min_lr=1e-5,
+        factor=0.8,
+    )
+
     # 训练元学习器
     for times in range(meta_epoch):
         total_loss = 0
         total_times = 0
+        meta_net.train()
         for features, lables in meta_DataLoader:
-            meta_net.train()
             output = meta_net(features)
             loss = loss_function(output, lables)
             total_loss += loss
@@ -275,7 +324,56 @@ if __name__ == "__main__":
             loss.backward()
             optimizer.step()
         average_loss = total_loss / total_times
+        meta_net.eval()
+        with torch.no_grad():
+            output = meta_net(final_verification_features)
+            j_, predict = torch.max(output.data, dim=1)
+            correct = (predict == final_verification_lables).sum().item()
+            total = len(final_verification_lables)
+            accuracy = correct / total
+        scheduler.step(accuracy)
+        current_lr = scheduler.get_last_lr()[0]
         print(
-            f"完成元学习器第{times+1}轮训练，在元学习集上平均损失为{average_loss}"
+            f"完成元学习器第{times+1}轮训练，在元学习集上平均损失为{average_loss},在验证集上正确率为{accuracy}"
         )
         weiter.add_scalar("元学习器平均损失", average_loss, times)
+        weiter.add_scalar("验证集正确率", accuracy, times)
+    print("完成元学习器的训练")
+
+    # 准备测试数据
+    processed_test_features_1 = (
+        torch.nn.functional.softmax(
+            base_net_list[0](square_tensor_test_features.to(device)), dim=1
+        )
+        .detach()
+        .cpu()
+    )
+    processed_test_features_2 = (
+        torch.nn.functional.softmax(
+            base_net_list[1](square_tensor_test_features.to(device)), dim=1
+        )
+        .detach()
+        .cpu()
+    )
+    processed_test_features_3 = (
+        base_net_list[2]
+        .predict_proba(LVQ_test_features.to(device))
+        .detach()
+        .cpu()
+    )
+    final_test_features = torch.cat(
+        [
+            processed_test_features_1,
+            processed_test_features_2,
+            processed_test_features_3,
+        ],
+        dim=1,
+    )
+    final_test_lables = tensor_test_lables
+    # 对测试数据进行分类
+    test_output = meta_net(final_test_features)
+    _, predict = torch.max(test_output.data, dim=1)
+    correct = (predict == final_test_lables).sum().item()
+    total = len(final_test_lables)
+    accuracy = correct / total
+    print(f"在测试数据集上的正确率为{accuracy}")
