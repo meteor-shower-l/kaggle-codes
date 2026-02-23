@@ -17,6 +17,13 @@ def read_csv(file_dir):
     return X, Y
 
 
+def read_csv_predict(file_dir):
+    df = pd.read_csv(file_dir)
+    X = df.iloc[:, :].values  # 特征
+    X = torch.tensor(X, dtype=torch.float32)
+    return X
+
+
 # 定义网络
 def mordern_cnn_net(f_device):
     net = nn.Sequential(
@@ -67,6 +74,7 @@ if __name__ == "__main__":
     epoch = 200
     #
     weiter = SummaryWriter(log_dir="log")
+
     # 读取数据，并创建dataset、dataloader
     init_features, init_lables = read_csv(
         "F:\\code_files\\python\\kaggle\\gs-Digit_Recognizer\\data\\train.csv"
@@ -99,8 +107,13 @@ if __name__ == "__main__":
         pin_memory=True,
         prefetch_factor=2,
     )
+    # 读取预测数据并转换为28*28向量
+    predict_data = read_csv_predict(
+        "F:\\code_files\\python\\kaggle\\gs-Digit_Recognizer\\data\\test.csv"
+    )
+    predict_data = torch.reshape(predict_data, (-1, 1, 28, 28)).to(device)
 
-    net = mordern_cnn_net()
+    net = mordern_cnn_net(device)
     # 定义损失函数
     loss_function = nn.CrossEntropyLoss()
     loss_function = loss_function.to(device)
@@ -114,7 +127,7 @@ if __name__ == "__main__":
         patience=10,  # 若10轮内，参数没有突破原有最大/最小值，学习率就会衰减
         cooldown=5,  # 衰减后5轮内不会再次检测
         threshold=0.0001,  # 只有超过0.0001的变化才会被视为改善
-        min_lr=1e-5,  # 学习率不小于1e-5
+        min_lr=1e-6,  # 学习率不小于1e-6
     )
     for i in range(epoch):
         net.train()
@@ -150,3 +163,10 @@ if __name__ == "__main__":
 当前学习率: {current_lr}""")
         weiter.add_scalar("平均损失", average_loss, i)
         weiter.add_scalar("平均正确率", accuracy, i)
+    final_output = net(predict_data)
+    _, predict = torch.max(final_output.data, 1)
+    predict = predict.cpu().numpy()
+    result_df = pd.DataFrame(
+        {"ImageId": range(1, 1 + len(predict)), "Lable": predict}
+    )
+    result_df.to_csv("submission_1.csv", index=False)
